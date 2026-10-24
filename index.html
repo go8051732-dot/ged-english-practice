@@ -86,7 +86,11 @@ body.question-mode #siteHeader{display:none!important}
  .result{padding:24px 12px}
  .score{font-size:36px}
 }
-@media(max-width:360px){.logo{font-size:12px}.top{gap:5px}.quiet{font-size:13px;padding-inline:8px}.qprompt{font-size:14px}.option{font-size:14px}}
+@media(max-width:360px){.logo{font-size:12px}.top{gap:5px}.quiet{font-size:13px;padding-inline:8px}.qprompt{font-size:14px}.option{font-size:14px}}/* 문제와 보기가 작은 화면에서도 잘리지 않도록 줄바꿈과 이미지 폭을 고정 */
+#quiz,.panel,.qhead,.english,.question-text,.options,.option,.feedback,.translation{min-width:0;max-width:100%}
+.question-text,.qprompt,.option span:last-child{overflow-wrap:anywhere;word-break:break-word}
+.question-figure{display:block;width:auto;max-width:100%;height:auto;max-height:none;object-fit:contain;margin:0 auto 12px}
+@media(max-width:620px){.app{width:100%;max-width:100%;padding-left:12px;padding-right:12px}.panel{padding-left:12px;padding-right:12px}.english{padding:14px 10px;font-size:16px;line-height:1.75}.option{padding-left:9px;padding-right:9px;white-space:normal}.actions{width:calc(100% + 24px);padding-left:12px;padding-right:12px}}
 
 </style></head><body><main class="app"><header id="siteHeader" class="top"><div class="logo"><span class="mark">영</span>검정고시 영어 연습</div><button id="homebtn" class="quiet" style="display:none" onclick="goHome()">시험 목록</button></header>
 <section id="home" class="screen active"><div class="welcome"><h1>어디서나 간편하게<br>기출문제를 풀어 보세요.</h1><p>시험을 고르면 한 문제씩 풀 수 있고, 모든 문항의 한국어 해석을 함께 볼 수 있어요.</p><button class="button quick" onclick="quickPractice()">빠른 문제 풀기</button></div><div class="wrong-home"><div><strong>틀린 문제 모아보기</strong><div id="wrongHomeSummary" class="exam-meta">아직 틀린 문제가 없어요.</div></div><button id="wrongHomeBtn" class="button outline" onclick="startWrongReview()" disabled>0문항 풀기</button></div><h2 class="sectiontitle">시험 회차 선택</h2><div class="tabs"><button class="tab active" data-round="1" onclick="setRound(1)">1차 시험</button><button class="tab" data-round="2" onclick="setRound(2)">2차 시험</button></div><div id="round-note" class="notice" style="display:none"></div><div id="examgrid" class="examgrid"></div></section>
