@@ -131,7 +131,7 @@ function show(id){document.querySelectorAll('.screen').forEach(x=>x.classList.to
 function goHome(){currentExam=null;wrongQueue=null;show('home');renderExamList()}
 function setRound(n){round=n;document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',Number(x.dataset.round)===n));renderExamList()}
 function saveVocabItems(){localStorage.setItem('exam-vocab-items',JSON.stringify(vocabItems));renderVocab();updateVocabHome()}
-function updateVocabHome(){const el=document.getElementById('vocabHomeCount');if(el)el.textContent=`${vocabItems.length}개　›`}
+function updateVocabHome(){const el=document.getElementById('vocabHomeCount');if(el)el.textContent=`${vocabItems.length.toLocaleString('ko-KR')}개　›`}
 function showVocab(){renderVocab();show('vocab');lookupMissingVocabDefinitions()}
 async function lookupMissingVocabDefinitions(){const pending=vocabItems.filter(item=>!item.definition);if(!pending.length)return;const notice=document.getElementById('vocabNotice');notice.textContent='저장한 단어의 영어 뜻을 찾고 있어요.';let found=0;for(const item of pending){try{item.definition=await fetchEnglishDefinition(item.word);found++;localStorage.setItem('exam-vocab-items',JSON.stringify(vocabItems))}catch{}}renderVocab();notice.textContent=found?`${found}개 단어의 영어 뜻을 추가했어요.`:'자동으로 찾지 못한 뜻은 각 단어의 영어 뜻 찾기 버튼을 눌러 다시 시도할 수 있어요.'}
 function knownEnglishDefinition(word){const key=word.trim().toLocaleLowerCase();const known={korean:'A person from Korea; also, the language spoken in Korea.',korea:'A country in East Asia.',english:'The language originally spoken in England and now used around the world.'};return known[key]||''}
