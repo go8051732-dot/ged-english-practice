@@ -1,0 +1,19 @@
+{
+  "id": "./",
+  "name": "검정고시 영어 기출 연습",
+  "short_name": "검정고시 영어",
+  "description": "중졸 검정고시 영어 기출 문제와 단어 복습",
+  "lang": "ko-KR",
+  "start_url": "./?launch=app",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#f4f8f5",
+  "theme_color": "#187b59",
+  "icons": [
+    {"src": "./icons/app-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "./icons/app-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "./icons/app-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
