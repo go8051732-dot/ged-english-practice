@@ -7,6 +7,7 @@
   const shortAnswer = q => q?.shortAnswer ?? q?.answerText ?? q?.inputAnswer ?? q?.acceptedAnswers?.[0] ?? (typeof q?.answer === 'string' ? q.answer : '');
   const isShort = q => !!(q?.__notebookShort || q?.subjective || q?.answerType === 'text' || q?.type === 'short' || q?.type === 'subjective' || (!Array.isArray(q?.options) && !!shortAnswer(q)));
   const normalize = value => String(value ?? '').trim().toLocaleLowerCase().replace(/[’‘]/g, "'").replace(/\s+/g, ' ');
+  let reviewSession = null;
   function migrateQuestionHistory() {
     for (const exam of exams) {
       const p = progress(exam); p.answerHistory ||= []; const notes = notesFor(exam);
@@ -118,6 +119,11 @@
   function startQueue(items) {
     if (!items.length) { renderWrongNotebook(); return; }
     wrongQueue = items.map(({ exam, index }) => ({ exam, index })); wrongCursor = 0;
+    reviewSession = { items: new Set(wrongQueue.map(item => `${key(item.exam)}:${item.index}`)), answered: new Set(), originals: new Map() };
+    wrongQueue.forEach(item => {
+      const p = progress(item.exam), k = `${key(item.exam)}:${item.index}`;
+      reviewSession.originals.set(k, { answerExists: Object.hasOwn(p.reviewAnswers || {}, item.index), answer: p.reviewAnswers?.[item.index], correctExists: Object.hasOwn(p.reviewCorrect || {}, item.index), correct: p.reviewCorrect?.[item.index] });
+    });
     currentExam = wrongQueue[0].exam; currentIndex = wrongQueue[0].index; renderQuestion(); show('quiz');
   }
   window.showWrongNotebook = showWrongNotebook;
@@ -138,7 +144,16 @@
     return function (...args) {
       const q = currentExam?.questions[currentIndex];
       if (q && !Array.isArray(q.options)) { q.__notebookShort = isShort(q); q.options = []; }
+      const p = q ? progress(currentExam) : null, reviewKey = q ? `${key(currentExam)}:${currentIndex}` : '', maskOldReview = !!(wrongQueue && reviewSession?.items.has(reviewKey) && !reviewSession.answered.has(reviewKey));
+      const oldAnswerExists = maskOldReview && Object.hasOwn(p.reviewAnswers || {}, currentIndex), oldAnswer = p?.reviewAnswers?.[currentIndex];
+      const oldCorrectExists = maskOldReview && Object.hasOwn(p.reviewCorrect || {}, currentIndex), oldCorrect = p?.reviewCorrect?.[currentIndex];
+      if (maskOldReview) { if (p.reviewAnswers) delete p.reviewAnswers[currentIndex]; if (p.reviewCorrect) delete p.reviewCorrect[currentIndex]; }
       render.apply(this, args);
+      if (maskOldReview) {
+        if (oldAnswerExists) { p.reviewAnswers ||= {}; p.reviewAnswers[currentIndex] = oldAnswer; }
+        if (oldCorrectExists) { p.reviewCorrect ||= {}; p.reviewCorrect[currentIndex] = oldCorrect; }
+        save();
+      }
       if (!q || !isShort(q)) return;
       const box = document.getElementById('options'); if (!box) return;
       const input = document.createElement('input'); input.type = 'text'; input.className = 'wrong-short-answer'; input.placeholder = '답을 입력하세요'; input.setAttribute('aria-label', '답 입력');
@@ -162,6 +177,7 @@
     }
     let correct = isShort(q) ? normalize(answer) === normalize(shortAnswer(q)) : answer === q.answer;
     if (isShort(q) && correct) selected = shortAnswer(q);
+    if (reviewMode && reviewSession) reviewSession.answered.add(`${key(currentExam)}:${idx}`);
     originalCheck();
     const response = { date: dateToday(), timestamp: Date.now(), kind: reviewMode ? 'review' : (correct ? 'correct' : 'wrong'), answer: String(answer), correct };
     if (!correct || reviewMode) {
@@ -190,6 +206,22 @@
       document.getElementById('korean').textContent = `해설: ${q.explanation || q.korean || '해설을 확인할 수 없습니다.'}`;
     }
   };
+  const originalGoHome = window.goHome;
+  window.goHome = function () {
+    if (reviewSession) {
+      for (const item of wrongQueue || []) {
+        const k = `${key(item.exam)}:${item.index}`; if (reviewSession.answered.has(k)) continue;
+        const original = reviewSession.originals.get(k), p = progress(item.exam); if (!original) continue;
+        p.reviewAnswers ||= {}; p.reviewCorrect ||= {};
+        if (original.answerExists) p.reviewAnswers[item.index] = original.answer; else delete p.reviewAnswers[item.index];
+        if (original.correctExists) p.reviewCorrect[item.index] = original.correct; else delete p.reviewCorrect[item.index];
+      }
+      save();
+    }
+    reviewSession = null; originalGoHome();
+  };
+  const originalFinishReview = window.finishWrongReview;
+  window.finishWrongReview = function () { reviewSession = null; originalFinishReview(); };
   window.showWrongNotebook = showWrongNotebook;
   window.renderWrongNotebook = renderWrongNotebook;
   updateWrongHome();
