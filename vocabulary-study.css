@@ -37,3 +37,17 @@ body{background:#f3f5f0!important;color:#354139!important;font-family:system-ui,
 .wrong-subject-filters button{background:#fffefa!important;border-color:#e1e7df!important;color:#627165!important}.wrong-subject-filters button.active{background:#e4ede1!important;border-color:#dce7d9!important;color:#4f6c53!important}.wrong-chart-pending{background:#c68b7e!important}.wrong-chart-mastered{background:#93ad92!important}.wrong-chart-legend span:before{background:#c68b7e!important}.wrong-chart-legend span+span:before{background:#93ad92!important}.wrong-note-meta b,.question-history-meta b{color:#596d5d!important}.wrong-note-item p,.question-history-item p{color:#56645a!important}.wrong-chart-track{background:#eef0eb!important}.wrong-empty{background:#fafbf8!important;border-color:#e4e9e2!important;color:#7a847a!important}
 .my-page-record.is-correct{border-left-color:#93ad92!important;background:#fffefa!important}.my-page-record.is-wrong{border-left-color:#c68b7e!important;background:#fffefa!important}.my-page-kind{color:#718074!important}.my-page-result{color:#68846a!important}.is-wrong .my-page-result{color:#a7776f!important}.my-page-answer{background:#f4f6f1!important;color:#626f64!important}.my-page-record>small{color:#858d83!important}
 @media(max-width:620px){.app{padding:12px 12px 40px}.landing-head{padding:18px 8px 14px!important}.landing-head h1{font-size:23px!important}.panel{padding:14px!important}.subject-card,.exam-select,.wrong-home{margin-left:0;margin-right:0}.vocab-home{margin-bottom:10px}.my-page-record-list{max-height:65vh}}
+
+/* A quieter, shorter home screen */
+#home>.subject-card,#home>.wrong-home,#home>.my-page-home,#home>.vocab-home{display:none!important}
+.landing-head{padding:10px 8px 13px!important;text-align:left!important}
+.landing-head .landing-kicker{font-size:12px!important;letter-spacing:0!important;color:#879287!important}
+.landing-head h1{font-size:24px!important;margin:2px 0!important}
+.exam-select{padding:14px!important}
+.exam-select-head h2{font-size:16px!important}
+.tabs{margin:10px 0!important}
+.tab{padding:8px 16px!important}
+.home-shortcuts{max-width:600px;margin:0 auto 10px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.home-shortcuts button{min-height:40px;background:transparent;border:1px solid #e3e9e2;border-radius:10px;color:#718074;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.home-shortcuts button:hover{background:#edf3ec;color:#526456}
+@media(max-width:620px){.landing-head{padding:8px 5px 10px!important}.exam-select{padding:12px!important}.home-shortcuts{gap:6px}.home-shortcuts button{min-height:38px}}
