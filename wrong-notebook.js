@@ -7,6 +7,23 @@
   const shortAnswer = q => q?.shortAnswer ?? q?.answerText ?? q?.inputAnswer ?? q?.acceptedAnswers?.[0] ?? (typeof q?.answer === 'string' ? q.answer : '');
   const isShort = q => !!(q?.__notebookShort || q?.subjective || q?.answerType === 'text' || q?.type === 'short' || q?.type === 'subjective' || (!Array.isArray(q?.options) && !!shortAnswer(q)));
   const normalize = value => String(value ?? '').trim().toLocaleLowerCase().replace(/[’‘]/g, "'").replace(/\s+/g, ' ');
+  function migrateQuestionHistory() {
+    for (const exam of exams) {
+      const p = progress(exam); p.answerHistory ||= [];
+      const answers = { ...(p.examResult?.answers || {}), ...(p.answers || {}), ...(p.reviewAnswers || {}) }, scores = scoreMap(exam);
+      Object.entries(answers).forEach(([rawIndex, answer]) => {
+        const index = Number(rawIndex);
+        if (!exam.questions[index] || p.answerHistory.some(row => row.questionNumber === index + 1)) return;
+        p.answerHistory.push({ subject: subjectOf(exam), examLabel: exam.label, questionNumber: index + 1, date: '이전 기록', answer: String(answer ?? ''), answerIndex: Number.isInteger(answer) ? answer : null, correct: scores[index] === true, mode: 'legacy' });
+      });
+    }
+  }
+  function collectQuestionHistory() {
+    migrateQuestionHistory();
+    return exams.flatMap(exam => (progress(exam).answerHistory || []).map(row => ({ exam, row })))
+      .filter(({ exam }) => activeSubject === 'all' || subjectOf(exam) === activeSubject)
+      .sort((a, b) => (b.row.date === '이전 기록' ? '' : b.row.date).localeCompare(a.row.date === '이전 기록' ? '' : a.row.date) || (b.row.timestamp || 0) - (a.row.timestamp || 0));
+  }
   const notesFor = exam => {
     const p = progress(exam);
     if (!p.wrongNotes || typeof p.wrongNotes !== 'object') p.wrongNotes = {};
@@ -56,6 +73,14 @@
     const retryCorrect = all.reduce((sum, item) => sum + (item.note.reviewCorrectCount || 0), 0);
     const stat = document.getElementById('wrongNotebookStats');
     if (stat) stat.innerHTML = `<div><b>${pending.length}</b><span>남은 오답</span></div><div><b>${mastered.length}</b><span>다시 맞힌 문제</span></div><div><b>${retryAttempts ? Math.round(retryCorrect / retryAttempts * 100) : 0}%</b><span>복습 정답률</span></div>`;
+    const history = collectQuestionHistory(), historyCorrect = history.filter(({ row }) => row.correct).length;
+    const historySummary = document.getElementById('questionHistorySummary');
+    if (historySummary) historySummary.textContent = `${history.length}회 풀이 · 맞힘 ${historyCorrect} · 틀림 ${history.length - historyCorrect}`;
+    const historyList = document.getElementById('questionHistoryList');
+    if (historyList) historyList.innerHTML = history.length ? history.slice(0, 20).map(({ exam, row }) => {
+      const savedAnswer = Number.isInteger(row.answerIndex) ? exam.questions[row.questionNumber - 1]?.options?.[row.answerIndex] || '선택 답' : row.answer;
+      return `<article class="question-history-item"><div class="question-history-meta"><b>${escape(subjectOf(exam))} · ${escape(row.examLabel || exam.label)} · ${row.questionNumber}번</b><span>${row.correct ? '⭕ 맞힘' : '❌ 틀림'} · ${escape(row.date)}</span></div><p>${escape(exam.questions[row.questionNumber - 1]?.english || '')}</p><small>내 답: ${escape(savedAnswer || '답 없음')}</small></article>`;
+    }).join('') : '<p class="wrong-empty">문제를 풀면 정답과 오답이 날짜와 함께 여기에 쌓입니다.</p>';
     const chart = document.getElementById('wrongProgressChart'); if (chart) chart.innerHTML = chartHtml(all);
     const filters = document.getElementById('wrongSubjectFilters');
     if (filters) filters.innerHTML = `<button class="${activeSubject === 'all' ? 'active' : ''}" onclick="filterWrongSubject('all')">전체 ${all.length}</button>${subjects.map(s => `<button class="${activeSubject === s ? 'active' : ''}" onclick="filterWrongSubject('${escape(s)}')">${escape(s)} ${all.filter(x => subjectOf(x.exam) === s).length}</button>`).join('')}`;
@@ -131,6 +156,9 @@
       }
       note.history ||= []; note.history.push(response); if (note.history.length > 100) note.history.shift();
     }
+    p.answerHistory ||= [];
+    p.answerHistory.push({ subject: subjectOf(currentExam), examLabel: currentExam.label, questionNumber: idx + 1, date: dateToday(), timestamp: Date.now(), answer: String(answer), answerIndex: Number.isInteger(answer) ? answer : null, correct, mode: reviewMode ? 'review' : 'exam' });
+    if (p.answerHistory.length > 500) p.answerHistory.splice(0, p.answerHistory.length - 500);
     if (isShort(q) && reviewMode) {
       p.reviewAnswers ||= {}; p.reviewAnswers[idx] = answer; p.reviewCorrect ||= {}; p.reviewCorrect[idx] = correct;
     }
