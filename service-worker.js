@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ged-english-app-v4';
+const CACHE_NAME = 'ged-english-app-v5';
 const SHELL_FILES = [
   './',
   './index.html',

@@ -64,6 +64,7 @@
     if (pl) pl.innerHTML = pendingRows.length ? pendingRows.map(item => itemHtml(item, false)).join('') : '<p class="wrong-empty">남은 오답이 없어요. 문제를 틀리면 여기에 자동으로 모입니다.</p>';
     if (ml) ml.innerHTML = masteredRows.length ? masteredRows.map(item => itemHtml(item, true)).join('') : '<p class="wrong-empty">다시 맞힌 문제는 여기에 기록됩니다.</p>';
     const allBtn = document.getElementById('wrongAllRetry'); if (allBtn) allBtn.disabled = pending.length === 0;
+    const savedBtn = document.getElementById('wrongSavedRetry'); if (savedBtn) savedBtn.disabled = all.length === 0;
     const homeSummary = document.getElementById('wrongHomeSummary'); if (homeSummary) homeSummary.textContent = `${pending.length}개 남음 · ${mastered.length}개 다시 맞힘`;
     saveNotebook();
   }
@@ -85,6 +86,7 @@
     const items = allItems(false).filter(item => !examFilter || key(item.exam) === key(examFilter));
     startQueue(items);
   };
+  window.startSavedWrongReview = () => startQueue(allItems(true));
   window.startSingleWrongReview = (examKey, index) => startQueue(allItems(true).filter(item => key(item.exam) === examKey && item.index === index));
   window.renderQuestion = (function (render) {
     return function (...args) {
