@@ -18,6 +18,12 @@
       });
       for (const [rawIndex, note] of Object.entries(notesFor(exam))) {
         const index = Number(rawIndex);
+        if (exam.questions[index] && (!Array.isArray(note.history) || !note.history.length)) {
+          note.history = [];
+          for (let i = 0; i < (note.wrongCount || 0); i++) note.history.push({ kind: 'wrong', answer: i === 0 ? p.answers?.[index] ?? '' : '', correct: false });
+          for (let i = 0; i < (note.reviewCorrectCount || 0); i++) note.history.push({ kind: 'review', answer: i === 0 ? p.reviewAnswers?.[index] ?? '' : '', correct: true });
+          for (let i = 0; i < (note.reviewWrongCount || 0); i++) note.history.push({ kind: 'review', answer: i === 0 ? p.reviewAnswers?.[index] ?? '' : '', correct: false });
+        }
         (note.history || []).forEach((attempt, attemptIndex) => {
           if (!exam.questions[index] || p.answerHistory.some(row => row.noteSourceIndex === attemptIndex && row.questionNumber === index + 1 && row.mode === 'legacy-note')) return;
           p.answerHistory.push({ subject: subjectOf(exam), examLabel: exam.label, questionNumber: index + 1, date: '이전 기록', answer: String(attempt.answer ?? ''), answerIndex: Number.isInteger(attempt.answer) ? attempt.answer : null, correct: attempt.correct === true, mode: 'legacy-note', noteSourceIndex: attemptIndex });
