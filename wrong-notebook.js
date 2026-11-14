@@ -86,7 +86,15 @@
     const retryCorrect = all.reduce((sum, item) => sum + (item.note.reviewCorrectCount || 0), 0);
     const stat = document.getElementById('wrongNotebookStats');
     if (stat) stat.innerHTML = `<div><b>${pending.length}</b><span>남은 오답</span></div><div><b>${mastered.length}</b><span>다시 맞힌 문제</span></div><div><b>${retryAttempts ? Math.round(retryCorrect / retryAttempts * 100) : 0}%</b><span>복습 정답률</span></div>`;
-    const history = collectQuestionHistory(), historyCorrect = history.filter(({ row }) => row.correct).length;
+    let history = collectQuestionHistory();
+    if (!history.length && all.length) history = all.flatMap(item => {
+      const p = progress(item.exam), n = item.note, rows = [];
+      for (let i = 0; i < (n.wrongCount || 0); i++) rows.push({ exam: item.exam, row: { examLabel: item.exam.label, questionNumber: item.index + 1, date: '이전 기록', answer: i === 0 ? p.answers?.[item.index] ?? '' : '', answerIndex: i === 0 && Number.isInteger(p.answers?.[item.index]) ? p.answers[item.index] : null, correct: false } });
+      for (let i = 0; i < (n.reviewCorrectCount || 0); i++) rows.push({ exam: item.exam, row: { examLabel: item.exam.label, questionNumber: item.index + 1, date: '이전 기록', answer: i === 0 ? p.reviewAnswers?.[item.index] ?? '' : '', answerIndex: i === 0 && Number.isInteger(p.reviewAnswers?.[item.index]) ? p.reviewAnswers[item.index] : null, correct: true } });
+      for (let i = 0; i < (n.reviewWrongCount || 0); i++) rows.push({ exam: item.exam, row: { examLabel: item.exam.label, questionNumber: item.index + 1, date: '이전 기록', answer: i === 0 ? p.reviewAnswers?.[item.index] ?? '' : '', answerIndex: i === 0 && Number.isInteger(p.reviewAnswers?.[item.index]) ? p.reviewAnswers[item.index] : null, correct: false } });
+      return rows;
+    });
+    const historyCorrect = history.filter(({ row }) => row.correct).length;
     const historySummary = document.getElementById('questionHistorySummary');
     if (historySummary) historySummary.textContent = `${history.length}회 풀이 · 맞힘 ${historyCorrect} · 틀림 ${history.length - historyCorrect}`;
     const historyList = document.getElementById('questionHistoryList');
