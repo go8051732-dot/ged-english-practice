@@ -1,10 +1,11 @@
-const CACHE_NAME = 'ged-english-app-v2';
+const CACHE_NAME = 'ged-english-app-v4';
 const SHELL_FILES = [
   './',
   './index.html',
   './manifest.webmanifest',
   './vocabulary-study.css',
   './vocabulary-study.js',
+  './wrong-notebook.js',
   './pwa-register.js',
   './icons/app-192.png',
   './icons/app-512.png',
