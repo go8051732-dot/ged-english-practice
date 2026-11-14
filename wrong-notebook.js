@@ -9,13 +9,20 @@
   const normalize = value => String(value ?? '').trim().toLocaleLowerCase().replace(/[’‘]/g, "'").replace(/\s+/g, ' ');
   function migrateQuestionHistory() {
     for (const exam of exams) {
-      const p = progress(exam); p.answerHistory ||= [];
+      const p = progress(exam); p.answerHistory ||= []; const notes = notesFor(exam);
       const answers = { ...(p.examResult?.answers || {}), ...(p.answers || {}), ...(p.reviewAnswers || {}) }, scores = scoreMap(exam);
       Object.entries(answers).forEach(([rawIndex, answer]) => {
         const index = Number(rawIndex);
-        if (!exam.questions[index] || p.answerHistory.some(row => row.questionNumber === index + 1)) return;
+        if (!exam.questions[index] || notes[index]?.history?.length || p.answerHistory.some(row => row.questionNumber === index + 1)) return;
         p.answerHistory.push({ subject: subjectOf(exam), examLabel: exam.label, questionNumber: index + 1, date: '이전 기록', answer: String(answer ?? ''), answerIndex: Number.isInteger(answer) ? answer : null, correct: scores[index] === true, mode: 'legacy' });
       });
+      for (const [rawIndex, note] of Object.entries(notesFor(exam))) {
+        const index = Number(rawIndex);
+        (note.history || []).forEach((attempt, attemptIndex) => {
+          if (!exam.questions[index] || p.answerHistory.some(row => row.noteSourceIndex === attemptIndex && row.questionNumber === index + 1 && row.mode === 'legacy-note')) return;
+          p.answerHistory.push({ subject: subjectOf(exam), examLabel: exam.label, questionNumber: index + 1, date: '이전 기록', answer: String(attempt.answer ?? ''), answerIndex: Number.isInteger(attempt.answer) ? attempt.answer : null, correct: attempt.correct === true, mode: 'legacy-note', noteSourceIndex: attemptIndex });
+        });
+      }
     }
   }
   function collectQuestionHistory() {
@@ -142,7 +149,7 @@
     let correct = isShort(q) ? normalize(answer) === normalize(shortAnswer(q)) : answer === q.answer;
     if (isShort(q) && correct) selected = shortAnswer(q);
     originalCheck();
-    const response = { date: dateToday(), kind: reviewMode ? 'review' : (correct ? 'correct' : 'wrong'), answer: String(answer), correct };
+    const response = { date: dateToday(), timestamp: Date.now(), kind: reviewMode ? 'review' : (correct ? 'correct' : 'wrong'), answer: String(answer), correct };
     if (!correct || reviewMode) {
       const note = notes[idx] ||= { subject: subjectOf(currentExam), questionNumber: idx + 1, firstWrongDate: dateToday(), wrongCount: 0, wrongDates: [], reviewCorrectCount: 0, reviewWrongCount: 0, history: [], status: 'pending' };
       note.subject = subjectOf(currentExam); note.questionNumber = idx + 1;
