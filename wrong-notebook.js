@@ -8,6 +8,7 @@
   const isShort = q => !!(q?.__notebookShort || q?.subjective || q?.answerType === 'text' || q?.type === 'short' || q?.type === 'subjective' || (!Array.isArray(q?.options) && !!shortAnswer(q)));
   const normalize = value => String(value ?? '').trim().toLocaleLowerCase().replace(/[’‘]/g, "'").replace(/\s+/g, ' ');
   let reviewSession = null;
+  let myPageType = 'all', myPageOutcome = 'all';
   function migrateQuestionHistory() {
     for (const exam of exams) {
       const p = progress(exam); p.answerHistory ||= []; const notes = notesFor(exam);
@@ -115,6 +116,52 @@
     const homeSummary = document.getElementById('wrongHomeSummary'); if (homeSummary) homeSummary.textContent = `${pending.length}개 남음 · ${mastered.length}개 다시 맞힘`;
     saveNotebook();
   }
+  function myPageRecords() {
+    activeSubject = 'all';
+    const examRows = collectQuestionHistory().map(({ exam, row }) => {
+      const q = exam.questions[row.questionNumber - 1], answer = Number.isInteger(row.answerIndex) ? q?.options?.[row.answerIndex] || '선택 답' : row.answer;
+      return { category: 'exam', categoryName: '시험 문제', title: `${row.examLabel || exam.label} · ${row.questionNumber}번`, prompt: q?.english || '', answer, expected: q?.options?.[q.answer] || '정답 정보 없음', correct: !!row.correct, date: row.date || '기록 없음', timestamp: row.timestamp || 0, count: row.count || 1 };
+    });
+    let review = {}, savedWords = [];
+    try { review = JSON.parse(localStorage.getItem('exam-vocab-review-v1') || '{}') || {}; } catch {}
+    try { savedWords = JSON.parse(localStorage.getItem('exam-vocab-items') || '[]') || []; } catch {}
+    let wordMap = new Map();
+    try { wordMap = new Map((typeof builtInVocab !== 'undefined' ? builtInVocab : []).map(item => [String(item.word).toLocaleLowerCase(), item])); } catch {}
+    for (const item of savedWords) wordMap.set(String(item.word).toLocaleLowerCase(), { ...wordMap.get(String(item.word).toLocaleLowerCase()), ...item });
+    const wordRows = [];
+    for (const [wordKey, stats] of Object.entries(review)) {
+      const word = wordMap.get(wordKey), attempts = Array.isArray(stats.history) ? stats.history : [];
+      if (attempts.length) attempts.forEach(row => {
+        const koToEn = row.type === 'ko-en';
+        wordRows.push({ category: 'word', categoryName: '단어 문제', title: word?.word || wordKey, prompt: koToEn ? (word?.meaning || '한국어 뜻') : (word?.meaning || '뜻 확인 필요'), promptHint: koToEn ? '뜻을 보고 영어 단어 쓰기' : '영어 단어 뜻 고르기', answer: row.answer, expected: koToEn ? (word?.word || wordKey) : (word?.meaning || '뜻 확인 필요'), correct: !!row.correct, date: row.date || '기록 없음', timestamp: row.answeredAt || 0, count: 1 });
+      });
+      else {
+        if (stats.correctCount) wordRows.push({ category: 'word', categoryName: '단어 문제', title: word?.word || wordKey, prompt: word?.meaning || '한국어 뜻', promptHint: '이전 기록', answer: '', expected: word?.meaning || '뜻 확인 필요', correct: true, date: '이전 기록', timestamp: 0, count: stats.correctCount });
+        if (stats.wrongCount) wordRows.push({ category: 'word', categoryName: '단어 문제', title: word?.word || wordKey, prompt: word?.meaning || '한국어 뜻', promptHint: '이전 기록', answer: '', expected: word?.meaning || '뜻 확인 필요', correct: false, date: '이전 기록', timestamp: 0, count: stats.wrongCount });
+      }
+    }
+    save();
+    return [...examRows, ...wordRows].sort((a, b) => (b.date === '이전 기록' ? '' : b.date).localeCompare(a.date === '이전 기록' ? '' : a.date) || b.timestamp - a.timestamp);
+  }
+  function renderMyPage() {
+    const records = myPageRecords(), filtered = records.filter(row => (myPageType === 'all' || row.category === myPageType) && (myPageOutcome === 'all' || (myPageOutcome === 'correct' ? row.correct : !row.correct)));
+    const count = row => records.filter(item => item.category === row && item.correct).reduce((n, item) => n + item.count, 0);
+    const missed = row => records.filter(item => item.category === row && !item.correct).reduce((n, item) => n + item.count, 0);
+    const total = records.reduce((n, item) => n + item.count, 0), right = records.filter(row => row.correct).reduce((n, item) => n + item.count, 0), wrong = total - right;
+    const stats = document.getElementById('myPageStats');
+    if (stats) stats.innerHTML = `<div><b>${total}</b><span>전체 풀이</span></div><div><b>${right}</b><span>맞힌 기록</span></div><div><b>${wrong}</b><span>틀린 기록</span></div>`;
+    const categoryStats = document.getElementById('myPageCategoryStats');
+    if (categoryStats) categoryStats.innerHTML = `<article><h2>시험 문제</h2><p><b>${count('exam')}</b> 맞힘 <span>·</span> <b>${missed('exam')}</b> 틀림</p></article><article><h2>단어 문제</h2><p><b>${count('word')}</b> 맞힘 <span>·</span> <b>${missed('word')}</b> 틀림</p></article>`;
+    const typeFilters = document.getElementById('myPageTypeFilters'), outcomeFilters = document.getElementById('myPageOutcomeFilters');
+    if (typeFilters) typeFilters.innerHTML = [['all','전체'],['exam','시험 문제'],['word','단어 문제']].map(([value,label]) => `<button class="${myPageType===value?'active':''}" onclick="setMyPageFilter('type','${value}')">${label}</button>`).join('');
+    if (outcomeFilters) outcomeFilters.innerHTML = [['all','맞힘·틀림 모두'],['correct','맞힌 문제'],['wrong','틀린 문제']].map(([value,label]) => `<button class="${myPageOutcome===value?'active':''}" onclick="setMyPageFilter('outcome','${value}')">${label}</button>`).join('');
+    const list = document.getElementById('myPageRecordList'), countLabel = document.getElementById('myPageRecordCount');
+    if (countLabel) countLabel.textContent = `${filtered.reduce((n, row) => n + row.count, 0)}개 기록`;
+    if (list) list.innerHTML = filtered.length ? filtered.slice(0,100).map(row => `<article class="my-page-record ${row.correct?'is-correct':'is-wrong'}"><div class="my-page-record-top"><span class="my-page-kind">${row.categoryName}${row.promptHint?` · ${row.promptHint}`:''}</span><span class="my-page-result">${row.correct?'⭕ 맞힘':'❌ 틀림'}${row.count>1?` · ${row.count}회`:''}</span></div><h3>${escape(row.title)}</h3><p>${escape(row.prompt)}</p><div class="my-page-answer"><span>내 답: ${escape(row.answer || '이전 기록')}</span><span>정답: ${escape(row.expected)}</span></div><small>${escape(row.date)}</small></article>`).join('') : '<p class="wrong-empty">이 조건에 맞는 기록이 없어요. 문제를 풀면 여기에 저장됩니다.</p>';
+  }
+  function showMyPage() { myPageType = 'all'; myPageOutcome = 'all'; renderMyPage(); show('myPage'); }
+  window.showMyPage = showMyPage;
+  window.setMyPageFilter = (kind, value) => { if (kind === 'type') myPageType = value; else myPageOutcome = value; renderMyPage(); };
   function showWrongNotebook() { activeSubject = 'all'; renderWrongNotebook(); show('wrongNotebook'); }
   function startQueue(items) {
     if (!items.length) { renderWrongNotebook(); return; }
